@@ -1,126 +1,71 @@
-# core/db.py
+# bot.py
+import os
 import asyncio
 import logging
-import aiosqlite
-from typing import Optional, Dict, Any, List
+from threading import Thread
+import discord
+from discord.ext import commands
+from dotenv import load_dotenv
 
+from waitress import serve
+from webapp import app
+from cogs.titles import TitleCog
+from core import db, utils
 import config
 
+# --- Setup ---
+load_dotenv()
+os.makedirs(config.DATA_DIR, exist_ok=True)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
-DB_FILE = config.DATABASE_FILE
+# --- Bot Subclass ---
+class MyBot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-async def get_conn() -> aiosqlite.Connection:
-    """Gets a database connection."""
-    conn = await aiosqlite.connect(DB_FILE)
-    conn.row_factory = aiosqlite.Row
-    return conn
+    async def setup_hook(self):
+        """This is called after login but before connecting to the gateway."""
+        # Ensure icons are downloaded before anything else
+        utils.ensure_icons_cached()
+        logger.info("Checked for local icons.")
 
-async def init_db():
-    """Initializes the database and creates tables if they don't exist."""
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute("CREATE TABLE IF NOT EXISTS titles (...)")
-        await db.execute("CREATE TABLE IF NOT EXISTS schedules (...)")
-        await db.execute("CREATE TABLE IF NOT EXISTS sent_reminders (...)")
-        await db.execute("CREATE TABLE IF NOT EXISTS activated_slots (...)")
-        
-        cursor = await db.execute("SELECT COUNT(*) FROM titles")
-        if (await cursor.fetchone())[0] == 0:
-            for title_name in config.TITLES_CATALOG:
-                await db.execute("INSERT INTO titles (name) VALUES (?)", (title_name,))
+        # Initialize the database
+        await db.init_db()
 
-        await db.commit()
-    logger.info("Database initialized successfully.")
+        # Add the command cog
+        await self.add_cog(TitleCog(self))
+        logger.info("TitleCog loaded.")
 
-# === Query Functions (All corrected with the new pattern) ===
+# --- Bot Initialization ---
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+bot = MyBot(command_prefix='!', intents=intents)
 
-async def get_all_titles_status() -> List[Dict[str, Any]]:
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT * FROM titles ORDER BY name")
-        rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+# --- Web Server ---
+def run_flask():
+    """Runs the Flask web server using Waitress."""
+    # Pass the bot's event loop to Flask for the run_async helper
+    app.config['BOT_LOOP'] = bot.loop
+    serve(app, host='0.0.0.0', port=8080)
 
-async def get_title_status(title_name: str) -> Optional[Dict[str, Any]]:
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT * FROM titles WHERE name = ?", (title_name,))
-        row = await cursor.fetchone()
-        return dict(row) if row else None
+# --- Bot Events ---
+@bot.event
+async def on_ready():
+    """Called when the bot is fully connected and ready."""
+    logger.info(f'{bot.user.name} has connected to Discord!')
+    
+    # Start the Flask app in a separate thread
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logger.info("Flask web server started and accessible on port 8080.")
 
-async def assign_title(title_name: str, holder_ign: str, holder_coords: str, holder_discord_id: int, claim_date_iso: str, expiry_date_iso: str):
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute(
-            "UPDATE titles SET holder_ign = ?, holder_coords = ?, holder_discord_id = ?, claim_date = ?, expiry_date = ? WHERE name = ?",
-            (holder_ign, holder_coords, holder_discord_id, claim_date_iso, expiry_date_iso, title_name)
-        )
-        await db.commit()
-
-async def release_title(title_name: str):
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute(
-            "UPDATE titles SET holder_ign = NULL, holder_coords = NULL, holder_discord_id = NULL, claim_date = NULL, expiry_date = NULL WHERE name = ?",
-            (title_name,)
-        )
-        await db.commit()
-
-async def get_all_schedules() -> Dict[str, Dict[str, str]]:
-    schedules = {}
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT title_name, slot_key, reserver_ign FROM schedules")
-        rows = await cursor.fetchall()
-        for row in rows:
-            schedules.setdefault(row['title_name'], {})[row['slot_key']] = row['reserver_ign']
-    return schedules
-
-async def reserve_slot(title_name: str, slot_key: str, reserver_ign: str) -> bool:
-    try:
-        conn = await get_conn()
-        async with conn as db:
-            await db.execute("INSERT INTO schedules (title_name, slot_key, reserver_ign) VALUES (?, ?, ?)", (title_name, slot_key, reserver_ign))
-            await db.commit()
-        return True
-    except aiosqlite.IntegrityError:
-        return False
-
-async def get_reservation(title_name: str, slot_key: str) -> Optional[str]:
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT reserver_ign FROM schedules WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
-        row = await cursor.fetchone()
-        return row[0] if row else None
-
-async def cancel_reservation(title_name: str, slot_key: str):
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute("DELETE FROM schedules WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
-        await db.execute("DELETE FROM activated_slots WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
-        await db.commit()
-
-async def mark_reminder_sent(slot_key: str):
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute("INSERT OR IGNORE INTO sent_reminders (slot_key) VALUES (?)", (slot_key,))
-        await db.commit()
-
-async def was_reminder_sent(slot_key: str) -> bool:
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT 1 FROM sent_reminders WHERE slot_key = ?", (slot_key,))
-        return await cursor.fetchone() is not None
-
-async def mark_slot_activated(title_name: str, slot_key: str):
-    conn = await get_conn()
-    async with conn as db:
-        await db.execute("INSERT OR IGNORE INTO activated_slots (title_name, slot_key) VALUES (?, ?)", (title_name, slot_key))
-        await db.commit()
-
-async def was_slot_activated(title_name: str, slot_key: str) -> bool:
-    conn = await get_conn()
-    async with conn as db:
-        cursor = await db.execute("SELECT 1 FROM activated_slots WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
-        return await cursor.fetchone() is not None
+# --- Main Execution ---
+if __name__ == "__main__":
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        print("CRITICAL ERROR: DISCORD_TOKEN environment variable not found.")
+        print("Please create a .env file and add your token.")
+    else:
+        bot.run(token)

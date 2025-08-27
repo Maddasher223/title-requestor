@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import aiosqlite
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List
 
 import config
 
@@ -18,8 +18,8 @@ async def get_conn() -> aiosqlite.Connection:
 
 async def init_db():
     """Initializes the database and creates tables if they don't exist."""
-    async with get_conn() as db: # <-- FIX
-        # Main table for current title status
+    conn = await get_conn()
+    async with conn as db:
         await db.execute("""
             CREATE TABLE IF NOT EXISTS titles (
                 name TEXT PRIMARY KEY,
@@ -30,25 +30,22 @@ async def init_db():
                 expiry_date TEXT
             )
         """)
-
-        # Table for future reservations
+        
         await db.execute("""
             CREATE TABLE IF NOT EXISTS schedules (
                 title_name TEXT,
-                slot_key TEXT, -- ISO format: YYYY-MM-DDTHH:MM:SS
+                slot_key TEXT,
                 reserver_ign TEXT,
                 PRIMARY KEY (title_name, slot_key)
             )
         """)
 
-        # Log of when reminders were sent to prevent duplicates
         await db.execute("""
             CREATE TABLE IF NOT EXISTS sent_reminders (
                 slot_key TEXT PRIMARY KEY
             )
         """)
 
-        # Log of auto-activated slots to prevent duplicate assignments
         await db.execute("""
             CREATE TABLE IF NOT EXISTS activated_slots (
                 title_name TEXT,
@@ -57,7 +54,6 @@ async def init_db():
             )
         """)
         
-        # Populate titles if empty
         cursor = await db.execute("SELECT COUNT(*) FROM titles")
         if (await cursor.fetchone())[0] == 0:
             for title_name in config.TITLES_CATALOG:
@@ -66,38 +62,34 @@ async def init_db():
         await db.commit()
     logger.info("Database initialized successfully.")
 
-# === Query Functions (All corrected) ===
-
 async def get_all_titles_status() -> List[Dict[str, Any]]:
-    """Fetches the status of all titles."""
-    async with get_conn() as db: # <-- FIX
-        cursor = await db.execute("SELECT * FROM titles ORDER BY name")
+    conn = await get_conn()
+    async with conn as db:
+        cursor = await db.execute(f"SELECT * FROM titles")
         rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+        # Ensure order matches config.ORDERED_TITLES
+        rows_dict = {dict(row)['name']: dict(row) for row in rows}
+        return [rows_dict.get(name) for name in config.ORDERED_TITLES if rows_dict.get(name)]
 
 async def get_title_status(title_name: str) -> Optional[Dict[str, Any]]:
-    """Fetches the status of a single title."""
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         cursor = await db.execute("SELECT * FROM titles WHERE name = ?", (title_name,))
         row = await cursor.fetchone()
         return dict(row) if row else None
 
 async def assign_title(title_name: str, holder_ign: str, holder_coords: str, holder_discord_id: int, claim_date_iso: str, expiry_date_iso: str):
-    """Assigns a title to a holder."""
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         await db.execute(
-            """
-            UPDATE titles
-            SET holder_ign = ?, holder_coords = ?, holder_discord_id = ?, claim_date = ?, expiry_date = ?
-            WHERE name = ?
-            """,
+            "UPDATE titles SET holder_ign = ?, holder_coords = ?, holder_discord_id = ?, claim_date = ?, expiry_date = ? WHERE name = ?",
             (holder_ign, holder_coords, holder_discord_id, claim_date_iso, expiry_date_iso, title_name)
         )
         await db.commit()
 
 async def release_title(title_name: str):
-    """Releases a title, making it vacant."""
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         await db.execute(
             "UPDATE titles SET holder_ign = NULL, holder_coords = NULL, holder_discord_id = NULL, claim_date = NULL, expiry_date = NULL WHERE name = ?",
             (title_name,)
@@ -105,9 +97,9 @@ async def release_title(title_name: str):
         await db.commit()
 
 async def get_all_schedules() -> Dict[str, Dict[str, str]]:
-    """Fetches all scheduled reservations."""
     schedules = {}
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         cursor = await db.execute("SELECT title_name, slot_key, reserver_ign FROM schedules")
         rows = await cursor.fetchall()
         for row in rows:
@@ -115,45 +107,57 @@ async def get_all_schedules() -> Dict[str, Dict[str, str]]:
     return schedules
 
 async def reserve_slot(title_name: str, slot_key: str, reserver_ign: str) -> bool:
-    """Reserves a time slot. Returns True on success, False if already taken."""
     try:
-        async with get_conn() as db: # <-- FIX
+        conn = await get_conn()
+        async with conn as db:
             await db.execute("INSERT INTO schedules (title_name, slot_key, reserver_ign) VALUES (?, ?, ?)", (title_name, slot_key, reserver_ign))
             await db.commit()
-            return True
-    except aiosqlite.IntegrityError: # This slot is already reserved
+        return True
+    except aiosqlite.IntegrityError:
         return False
 
 async def get_reservation(title_name: str, slot_key: str) -> Optional[str]:
-    """Gets the IGN of the reserver for a specific slot."""
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         cursor = await db.execute("SELECT reserver_ign FROM schedules WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
         row = await cursor.fetchone()
-        return row[0] if row else None
+        return row['reserver_ign'] if row else None
 
 async def cancel_reservation(title_name: str, slot_key: str):
-    """Cancels a reservation."""
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         await db.execute("DELETE FROM schedules WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
         await db.execute("DELETE FROM activated_slots WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
         await db.commit()
 
 async def mark_reminder_sent(slot_key: str):
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         await db.execute("INSERT OR IGNORE INTO sent_reminders (slot_key) VALUES (?)", (slot_key,))
         await db.commit()
 
 async def was_reminder_sent(slot_key: str) -> bool:
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         cursor = await db.execute("SELECT 1 FROM sent_reminders WHERE slot_key = ?", (slot_key,))
         return await cursor.fetchone() is not None
 
 async def mark_slot_activated(title_name: str, slot_key: str):
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         await db.execute("INSERT OR IGNORE INTO activated_slots (title_name, slot_key) VALUES (?, ?)", (title_name, slot_key))
         await db.commit()
 
 async def was_slot_activated(title_name: str, slot_key: str) -> bool:
-    async with get_conn() as db: # <-- FIX
+    conn = await get_conn()
+    async with conn as db:
         cursor = await db.execute("SELECT 1 FROM activated_slots WHERE title_name = ? AND slot_key = ?", (title_name, slot_key))
         return await cursor.fetchone() is not None
+
+async def is_ign_booked_for_slot(ign: str, slot_key: str) -> Optional[str]:
+    """Checks if an IGN already has any title booked for a specific slot."""
+    conn = await get_conn()
+    async with conn as db:
+        cursor = await db.execute("SELECT title_name FROM schedules WHERE reserver_ign = ? AND slot_key = ?", (ign, slot_key))
+        row = await cursor.fetchone()
+        return row['title_name'] if row else None

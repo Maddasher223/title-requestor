@@ -1,4 +1,7 @@
-flask
-sqlalchemy
-requests
+# requirements.txt
 discord.py
+Flask
+waitress
+python-dotenv
+aiosqlite
+requests

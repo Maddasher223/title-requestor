@@ -4,6 +4,7 @@
 # For brevity, only key methods are shown with the new database calls.
 # The full, refactored cog would be here.
 
+import os
 import discord
 from discord.ext import commands, tasks
 from datetime import datetime, timedelta

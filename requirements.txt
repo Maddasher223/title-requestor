@@ -1,0 +1,4 @@
+flask
+sqlalchemy
+requests
+discord.py

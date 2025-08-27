@@ -1,0 +1,138 @@
+[
+  {
+    "type": "submit",
+    "title": "Architect",
+    "ign": "Voidpapi",
+    "x": 100,
+    "y": 200,
+    "start_utc": "2025-08-26T21:00:00+00:00",
+    "end_utc": "2025-08-27T00:00:00+00:00",
+    "timestamp_utc": "2025-08-26T19:37:50.276440+00:00"
+  },
+  {
+    "type": "submit",
+    "title": "General",
+    "ign": "Voidpapi",
+    "x": 50,
+    "y": 50,
+    "start_utc": "2025-08-26T21:00:00+00:00",
+    "end_utc": "2025-08-27T00:00:00+00:00",
+    "timestamp_utc": "2025-08-26T19:43:33.009719+00:00"
+  },
+  {
+    "type": "approve",
+    "title": "General",
+    "start_utc": "2025-08-26T21:00:00",
+    "timestamp_utc": "2025-08-26T19:56:12.398952+00:00"
+  },
+  {
+    "type": "approve",
+    "title": "General",
+    "start_utc": "2025-08-26T21:00:00",
+    "timestamp_utc": "2025-08-26T19:56:16.793269+00:00"
+  },
+  {
+    "type": "cancel",
+    "title": "Architect",
+    "start_utc": "2025-08-26T21:00:00",
+    "notes": null,
+    "timestamp_utc": "2025-08-26T19:56:20.850398+00:00"
+  },
+  {
+    "type": "approve",
+    "title": "General",
+    "start_utc": "2025-08-26T21:00:00",
+    "timestamp_utc": "2025-08-26T19:56:24.359209+00:00"
+  },
+  {
+    "type": "submit",
+    "title": "Governor",
+    "ign": "Voidpapi",
+    "x": 75,
+    "y": 75,
+    "start_utc": "2025-08-26T21:00:00+00:00",
+    "end_utc": "2025-08-27T00:00:00+00:00",
+    "timestamp_utc": "2025-08-26T19:57:06.276538+00:00"
+  },
+  {
+    "type": "config_change",
+    "notes": "admin web updated config",
+    "timestamp_utc": "2025-08-26T19:58:09.397591+00:00"
+  },
+  {
+    "type": "config_change",
+    "notes": "admin web updated config",
+    "timestamp_utc": "2025-08-26T19:58:12.979738+00:00"
+  },
+  {
+    "type": "submit",
+    "title": "Governor",
+    "ign": "Voidpapi",
+    "x": 100,
+    "y": 150,
+    "start_utc": "2025-08-27T00:00:00+00:00",
+    "end_utc": "2025-08-27T03:00:00+00:00",
+    "timestamp_utc": "2025-08-26T19:59:01.042267+00:00"
+  },
+  {
+    "type": "submit",
+    "title": "Prefect",
+    "ign": "Voidpapi",
+    "x": 25,
+    "y": 25,
+    "start_utc": "2025-08-26T21:00:00+00:00",
+    "end_utc": "2025-08-27T00:00:00+00:00",
+    "timestamp_utc": "2025-08-26T20:02:55.569920+00:00"
+  },
+  {
+    "type": "title_details",
+    "title": "Architect",
+    "icon_url": "https://cdn.discordapp.com/attachments/1409793076955840583/1409796581661605969/architect.png?ex=68aeaee1&is=68ad5d61&hm=f92811ccf5d3df1407331a4a9d7a71446bc3941d12ad3c215239709e24433f5d",
+    "buffs": "Construction Speed +10%",
+    "timestamp_utc": "2025-08-26T20:42:58.836974+00:00"
+  },
+  {
+    "type": "title_details",
+    "title": "Architect",
+    "icon_url": "https://cdn.discordapp.com/attachments/1409793076955840583/1409796581661605969/architect.png?ex=68aeaee1&is=68ad5d61&hm=f92811ccf5d3df1407331a4a9d7a71446bc3941d12ad3c215239709e24433f5d",
+    "buffs": "Construction Speed +10%",
+    "timestamp_utc": "2025-08-26T20:43:05.030046+00:00"
+  },
+  {
+    "type": "title_details",
+    "title": "General",
+    "icon_url": "https://cdn.discordapp.com/attachments/1409793076955840583/1409796597277266000/general.png?ex=68aeaee5&is=68ad5d65&hm=7d1ea13fa9be152fea766efa98e600dd1f66627aeeb906a77a79026e5018f6dc",
+    "buffs": "All benders' ATK +5%",
+    "timestamp_utc": "2025-08-26T20:43:21.546086+00:00"
+  },
+  {
+    "type": "title_details",
+    "title": "Prefect",
+    "icon_url": "https://cdn.discordapp.com/attachments/1409793076955840583/1409797574763741205/prefect.png?ex=68aeafce&is=68ad5e4e&hm=59f5ca4533e75747932e98443bc71313b1db744fc2d14132912765717250289d",
+    "buffs": "Research Speed +10%",
+    "timestamp_utc": "2025-08-26T20:43:34.303457+00:00"
+  },
+  {
+    "type": "title_details",
+    "title": "Governor",
+    "icon_url": "https://cdn.discordapp.com/attachments/1409793076955840583/1409796936227356723/governor.png?ex=68aeaf36&is=68ad5db6&hm=eaf87dca0758f55cd179e9649a37e89ec60e79982e026b289ea2f3f921bd1183",
+    "buffs": "All Benders' recruiting speed +10%",
+    "timestamp_utc": "2025-08-26T20:43:48.868627+00:00"
+  },
+  {
+    "type": "submit",
+    "title": "General",
+    "ign": "Voidpapi",
+    "x": 100,
+    "y": 200,
+    "start_utc": "2025-08-26T18:00:00+00:00",
+    "end_utc": "2025-08-26T21:00:00+00:00",
+    "timestamp_utc": "2025-08-26T20:45:08.905521+00:00"
+  },
+  {
+    "type": "approve",
+    "title": "Governor",
+    "start_utc": "2025-08-27T00:00:00",
+    "timestamp_utc": "2025-08-26T20:45:35.483715+00:00"
+  }
+]
